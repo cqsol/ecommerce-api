@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  product_id     Int         @id @default(autoincrement())
+  name           String
+  description    String?
+  price          Decimal
+  stock_quantity Int
+  image_url      String?
+  is_active      Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+}
+
+model Customer {
+  customer_id       Int      @id @default(autoincrement())
+  first_name        String
+  last_name         String
+  email             String   @unique
+  supabase_user_id  String   @unique // Links to Supabase auth.users.id (UUID)
+  registration_date DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  cart              Cart?
+  orders            Order[]
+}
+
+model Cart {
+  cart_id     Int        @id @default(autoincrement())
+  customer_id Int        @unique
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  customer    Customer   @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
+  items       CartItem[]
+}
+
+model CartItem {
+  cart_item_id Int      @id @default(autoincrement())
+  cart_id      Int
+  product_id   Int
+  quantity     Int
+  added_at     DateTime @default(now())
+  cart         Cart     @relation(fields: [cart_id], references: [cart_id], onDelete: Cascade)
+  product      Product  @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@unique([cart_id, product_id])
+}
+
+model Order {
+  order_id         Int         @id @default(autoincrement())
+  customer_id      Int
+  order_date       DateTime    @default(now())
+  total_amount     Decimal
+  order_status     OrderStatus @default(PENDING)
+  shipping_address String
+  billing_address  String
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  customer         Customer    @relation(fields: [customer_id], references: [customer_id])
+  items            OrderItem[]
+}
+
+model OrderItem {
+  order_item_id     Int     @id @default(autoincrement())
+  order_id          Int
+  product_id        Int
+  name_at_purchase  String
+  quantity          Int
+  price_at_purchase Decimal
+  order             Order   @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  product           Product @relation(fields: [product_id], references: [product_id])
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
